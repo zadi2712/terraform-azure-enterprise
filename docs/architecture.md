@@ -107,3 +107,178 @@ Name resolution for internal and external resources.
 
 **Design Decisions:**
 - Split-brain DNS for internal/external resolution
+- Automated DNS record management via Terraform
+- TTL optimization for performance
+
+### 7. Monitoring Layer
+
+Comprehensive observability and alerting.
+
+**Components:**
+- Log Analytics Workspace for centralized logging
+- Application Insights for APM
+- Azure Monitor for metrics and alerts
+- Action Groups for alert notifications
+- Diagnostic settings on all resources
+
+**Design Decisions:**
+- 30-90 day log retention based on compliance
+- Custom metrics for business KPIs
+- Multi-level alerting (info, warning, critical)
+- Integration with incident management systems
+
+## Network Architecture
+
+### Hub-and-Spoke Topology
+
+```
+        ┌─────────────────────────┐
+        │   Hub VNet (Shared)     │
+        │  - Azure Firewall       │
+        │  - VPN Gateway          │
+        │  - Bastion Host         │
+        └──────────┬──────────────┘
+                   │
+        ┌──────────┼──────────┐
+        │          │          │
+   ┌────▼───┐ ┌───▼────┐ ┌───▼────┐
+   │ Spoke  │ │ Spoke  │ │ Spoke  │
+   │  Dev   │ │  QA    │ │  Prod  │
+   │  VNet  │ │  VNet  │ │  VNet  │
+   └────────┘ └────────┘ └────────┘
+```
+
+### Subnet Design
+
+Each spoke VNet contains:
+- Gateway Subnet (for VPN/ExpressRoute)
+- AzureBastionSubnet
+- Management Subnet (jump boxes, agents)
+- Web Tier Subnet (Application Gateway, Load Balancers)
+- Application Tier Subnet (App Services, VMs, AKS)
+- Data Tier Subnet (Databases with private endpoints)
+- Private Endpoint Subnet
+- AKS System Node Pool Subnet
+- AKS User Node Pool Subnet
+
+## High Availability Design
+
+### Availability Zones
+
+Production resources deployed across multiple availability zones:
+- Zone-redundant VMs and VMSS
+- Zone-redundant databases
+- Zone-redundant storage (ZRS/GZRS)
+- AKS node pools across zones
+
+### Disaster Recovery
+
+- **RPO (Recovery Point Objective)**: < 1 hour
+- **RTO (Recovery Time Objective)**: < 4 hours
+- Automated backups to geo-redundant storage
+- Cross-region replication for critical data
+- Documented failover procedures
+
+## Security Architecture
+
+### Defense in Depth
+
+```
+Layer 1: Perimeter Security
+  - Azure Firewall
+  - DDoS Protection
+  - Application Gateway WAF
+
+Layer 2: Network Security
+  - Network Security Groups
+  - Service Endpoints
+  - Private Endpoints
+
+Layer 3: Identity & Access
+  - Azure AD Authentication
+  - Managed Identities
+  - RBAC
+
+Layer 4: Data Protection
+  - Encryption at Rest
+  - TLS 1.2+ in Transit
+  - Key Vault for Secrets
+
+Layer 5: Application Security
+  - Secure coding practices
+  - Vulnerability scanning
+  - Security headers
+```
+
+## Scalability Strategy
+
+- **Horizontal Scaling**: VMSS, AKS, App Service auto-scaling
+- **Vertical Scaling**: Database tier adjustments
+- **Global Scaling**: Multi-region deployment capability
+- **Caching**: Redis for session state and data caching
+- **CDN**: Azure Front Door for global content delivery
+
+## Cost Optimization
+
+- Reserved instances for predictable workloads
+- Spot instances for batch/dev workloads
+- Auto-shutdown for development resources
+- Storage lifecycle policies
+- Right-sizing based on metrics
+- Budget alerts per environment
+
+## Compliance and Governance
+
+- Azure Policy for compliance enforcement
+- Resource tagging for cost allocation
+- Audit logs retained for compliance periods
+- Encryption for data at rest and in transit
+- Regular security assessments
+- Compliance with SOC 2, ISO 27001, HIPAA (as applicable)
+
+## Environment Strategy
+
+### Development (dev)
+- Lower SKUs for cost savings
+- Auto-shutdown outside business hours
+- Shared resources where appropriate
+- Relaxed security for developer productivity
+
+### QA/Testing (qa)
+- Production-like configuration
+- Isolated from other environments
+- Performance testing capabilities
+- Integration testing support
+
+### User Acceptance Testing (uat)
+- Production-equivalent configuration
+- Business user access
+- Production data (sanitized/masked)
+
+### Production (prod)
+- High availability configuration
+- Zone redundancy
+- Enhanced monitoring and alerting
+- Strict change management
+- Multi-region capability
+- Enhanced backup retention
+
+## Infrastructure as Code Best Practices
+
+- **Modularity**: Reusable modules with clear interfaces
+- **State Management**: Remote state with locking
+- **Secrets**: Never in code, always in Key Vault
+- **Versioning**: Module versioning for stability
+- **Testing**: Automated validation and testing
+- **Documentation**: Self-documenting code with comments
+- **Naming Conventions**: Consistent, descriptive names
+- **Dependency Management**: Explicit dependencies
+
+## Future Enhancements
+
+- Multi-region active-active deployment
+- Service Mesh for microservices (Istio/Linkerd)
+- GitOps with ArgoCD/Flux
+- Advanced threat protection
+- AI/ML workload support
+- Chaos engineering implementation
