@@ -224,3 +224,92 @@ terraform state rm <resource-address>
 # Import existing resource
 terraform import <resource-address> <azure-resource-id>
 ```
+
+1. **Always use terraform plan before apply**
+2. **Never commit .tfstate files to git**
+3. **Use -out parameter to save plans**
+4. **Review plans carefully before applying**
+5. **Use workspaces or separate backends for environments**
+6. **Tag all resources consistently**
+7. **Document all infrastructure changes**
+8. **Use version constraints for providers and modules**
+9. **Implement proper state locking**
+10. **Regular state backups**
+
+## CI/CD Pipeline Integration
+
+### GitHub Actions Example
+
+```yaml
+name: Terraform Deploy
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.0
+      
+      - name: Terraform Init
+        run: terraform init -backend-config=backend.conf
+        working-directory: layers/${{ matrix.layer }}/environments/${{ matrix.env }}
+      
+      - name: Terraform Plan
+        run: terraform plan -var-file=terraform.tfvars
+        working-directory: layers/${{ matrix.layer }}/environments/${{ matrix.env }}
+      
+      - name: Terraform Apply
+        if: github.ref == 'refs/heads/main'
+        run: terraform apply -auto-approve -var-file=terraform.tfvars
+        working-directory: layers/${{ matrix.layer }}/environments/${{ matrix.env }}
+```
+
+## Security Considerations
+
+- Store service principal credentials in GitHub Secrets or Azure Key Vault
+- Use managed identities in Azure DevOps or GitHub runners
+- Enable MFA for all administrative accounts
+- Rotate secrets regularly
+- Audit all infrastructure changes
+- Use private endpoints for state storage
+
+## Monitoring Deployments
+
+Check deployment status in Azure Portal:
+- Resource Groups
+- Activity Log
+- Deployment History
+
+Monitor Terraform operations:
+- State file versions in Storage Account
+- Lock status
+- Last modified timestamp
+
+## Rollback Procedures
+
+If deployment fails:
+
+```bash
+# Option 1: Revert to previous state
+terraform state pull > current.tfstate
+# Restore previous version from Azure Storage
+az storage blob download --account-name <sa> --container-name tfstate \
+  --name <layer>-<env>.tfstate --version-id <previous-version> \
+  --file terraform.tfstate
+
+# Option 2: Destroy failed resources
+terraform destroy -target=<resource-address>
+
+# Option 3: Complete rollback
+terraform destroy -var-file=terraform.tfvars
+# Then redeploy previous working version
+```
