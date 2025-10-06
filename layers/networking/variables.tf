@@ -181,6 +181,16 @@ variable "allowed_management_ips" {
 }
 
 #=============================================================================
+# Monitoring Variables
+#=============================================================================
+
+variable "log_analytics_workspace_id" {
+  description = "Log Analytics Workspace ID for diagnostics (optional)"
+  type        = string
+  default     = null
+}
+
+#=============================================================================
 # Feature Flags
 #=============================================================================
 
@@ -212,14 +222,4 @@ variable "enable_nat_gateway" {
   description = "Deploy NAT Gateway for outbound internet connectivity"
   type        = bool
   default     = false
-}
-variable "custom_routes" {
-  description = "Custom routes for route table"
-  type = list(object({
-    name                   = string
-    address_prefix         = string
-    next_hop_type          = string
-    next_hop_in_ip_address = optional(string)
-  }))
-  default = []
 }

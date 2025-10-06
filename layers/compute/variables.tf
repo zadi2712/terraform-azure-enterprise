@@ -70,6 +70,12 @@ variable "state_resource_group_name" {
   default     = "rg-terraform-state"
 }
 
+variable "enable_security_integration" {
+  description = "Enable integration with security layer (for Key Vault, Log Analytics)"
+  type        = bool
+  default     = true
+}
+
 #=============================================================================
 # General Compute Variables
 #=============================================================================

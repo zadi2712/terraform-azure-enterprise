@@ -19,12 +19,6 @@ variable "disable_bgp_route_propagation" {
   default     = false
 }
 
-variable "tags" {
-  description = "Tags to apply"
-  type        = map(string)
-  default     = {}
-}
-
 variable "routes" {
   description = "List of routes"
   type = list(object({
@@ -36,8 +30,8 @@ variable "routes" {
   default = []
 }
 
-variable "subnet_ids" {
-  description = "List of subnet IDs to associate with this route table"
-  type        = list(string)
-  default     = []
+variable "tags" {
+  description = "Tags to apply"
+  type        = map(string)
+  default     = {}
 }

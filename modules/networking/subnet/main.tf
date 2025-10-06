@@ -1,7 +1,7 @@
 /**
  * Subnet Module
  * 
- * Creates Azure subnets with optional service endpoints and delegation
+ * Creates an Azure subnet with optional service endpoints and delegation
  */
 
 terraform {
@@ -25,12 +25,12 @@ resource "azurerm_subnet" "this" {
   private_link_service_network_policies_enabled = var.private_link_service_network_policies_enabled
 
   dynamic "delegation" {
-    for_each = var.delegation != null ? [var.delegation] : []
+    for_each = var.delegation_name != null ? [1] : []
     content {
-      name = delegation.value.name
+      name = var.delegation_name
       service_delegation {
-        name    = delegation.value.service_name
-        actions = delegation.value.actions
+        name    = var.service_delegation
+        actions = var.delegation_actions
       }
     }
   }

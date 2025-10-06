@@ -1,7 +1,10 @@
 /**
- * Compute Layer - Root Configuration
+ * Compute Layer - Root Module
  * 
- * This layer manages compute resources including:
+ * This is the root module for the compute layer.
+ * It ONLY calls modules from /modules directory - no direct resource creation.
+ * 
+ * This layer manages:
  * - Azure Kubernetes Service (AKS)
  * - Virtual Machine Scale Sets (VMSS)
  * - Azure App Service
@@ -51,8 +54,9 @@ data "terraform_remote_state" "networking" {
   }
 }
 
-# Remote state data - security layer
+# Remote state data - security layer (optional, for Key Vault and identities)
 data "terraform_remote_state" "security" {
+  count   = var.enable_security_integration ? 1 : 0
   backend = "azurerm"
 
   config = {
@@ -64,7 +68,7 @@ data "terraform_remote_state" "security" {
 }
 
 #=============================================================================
-# Resource Group
+# Resource Group Module
 #=============================================================================
 
 module "compute_rg" {
@@ -78,7 +82,7 @@ module "compute_rg" {
 }
 
 #=============================================================================
-# AKS Cluster
+# AKS Cluster Module
 #=============================================================================
 
 module "aks" {
@@ -122,8 +126,8 @@ module "aks" {
   admin_group_object_ids = var.aks_admin_group_object_ids
   azure_rbac_enabled     = true
 
-  # Monitoring
-  log_analytics_workspace_id = try(data.terraform_remote_state.security.outputs.log_analytics_workspace_id, null)
+  # Monitoring - integrate with security layer if available
+  log_analytics_workspace_id = var.enable_security_integration && length(data.terraform_remote_state.security) > 0 ? try(data.terraform_remote_state.security[0].outputs.log_analytics_workspace_id, null) : null
 
   # Security features
   private_cluster_enabled   = local.aks_config.private_cluster_enabled

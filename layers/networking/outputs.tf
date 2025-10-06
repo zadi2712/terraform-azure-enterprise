@@ -157,12 +157,12 @@ output "nsg_database_id" {
 
 output "route_table_id" {
   description = "ID of the main route table"
-  value       = module.route_table_main.id
+  value       = module.route_table.id
 }
 
 output "route_table_name" {
   description = "Name of the main route table"
-  value       = module.route_table_main.name
+  value       = module.route_table.name
 }
 
 #=============================================================================
@@ -191,7 +191,6 @@ output "network_config" {
       aks        = module.nsg_aks.id
       database   = module.nsg_database.id
     }
-    route_table = module.route_table_main.id
   }
   sensitive = false
 }

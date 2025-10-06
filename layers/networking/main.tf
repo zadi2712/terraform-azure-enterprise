@@ -1,16 +1,8 @@
 /**
  * Networking Layer - Root Module
  * 
- * This is a ROOT MODULE that orchestrates networking infrastructure by calling
- * reusable modules from the /modules directory.
- * 
- * NO RESOURCES ARE CREATED DIRECTLY HERE - only module calls.
- * 
- * Creates:
- * - Virtual Networks
- * - Subnets with service endpoints and delegation
- * - Network Security Groups with custom rules
- * - Route tables
+ * This layer calls modules from /modules to create networking infrastructure.
+ * NO resources are created directly here - only module calls.
  */
 
 terraform {
@@ -45,31 +37,32 @@ provider "azurerm" {
 data "azurerm_client_config" "current" {}
 
 #=============================================================================
-# RESOURCE GROUP MODULE
+# Resource Group Module
 #=============================================================================
 
 module "networking_rg" {
   source = "../../modules/resource-group"
 
-  name     = "rg-${local.naming_prefix}-network-${var.location}"
-  location = var.location
-  tags     = local.common_tags
-
+  name       = "rg-${local.naming_prefix}-network-${var.location}"
+  location   = var.location
+  tags       = local.common_tags
   lock_level = var.environment == "prod" ? "CanNotDelete" : null
 }
 
 #=============================================================================
-# VIRTUAL NETWORK MODULE
+# Virtual Network Module
 #=============================================================================
 
 module "vnet" {
   source = "../../modules/networking/vnet"
 
-  name                = "vnet-${local.naming_prefix}-${var.location}"
+  name                = "vnet-${local.naming_prefix}-${local.location_short}"
   location            = var.location
   resource_group_name = module.networking_rg.name
   address_space       = var.vnet_address_space
   dns_servers         = var.dns_servers
+
+  log_analytics_workspace_id = null  # Add when monitoring layer deployed
 
   tags = local.common_tags
 
@@ -77,10 +70,9 @@ module "vnet" {
 }
 
 #=============================================================================
-# SUBNET MODULES
+# Subnet Modules
 #=============================================================================
 
-# Management Subnet
 module "subnet_management" {
   source = "../../modules/networking/subnet"
 
@@ -89,11 +81,8 @@ module "subnet_management" {
   virtual_network_name = module.vnet.name
   address_prefixes     = [var.subnet_management_cidr]
   service_endpoints    = ["Microsoft.Storage", "Microsoft.KeyVault"]
-
-  depends_on = [module.vnet]
 }
 
-# Application Gateway Subnet
 module "subnet_appgw" {
   source = "../../modules/networking/subnet"
 
@@ -102,11 +91,8 @@ module "subnet_appgw" {
   virtual_network_name = module.vnet.name
   address_prefixes     = [var.subnet_appgw_cidr]
   service_endpoints    = []
-
-  depends_on = [module.vnet]
 }
 
-# AKS System Node Pool Subnet
 module "subnet_aks_system" {
   source = "../../modules/networking/subnet"
 
@@ -115,11 +101,8 @@ module "subnet_aks_system" {
   virtual_network_name = module.vnet.name
   address_prefixes     = [var.subnet_aks_system_cidr]
   service_endpoints    = ["Microsoft.Storage", "Microsoft.KeyVault", "Microsoft.ContainerRegistry"]
-
-  depends_on = [module.vnet]
 }
 
-# AKS User Node Pool Subnet
 module "subnet_aks_user" {
   source = "../../modules/networking/subnet"
 
@@ -128,26 +111,19 @@ module "subnet_aks_user" {
   virtual_network_name = module.vnet.name
   address_prefixes     = [var.subnet_aks_user_cidr]
   service_endpoints    = ["Microsoft.Storage", "Microsoft.KeyVault", "Microsoft.ContainerRegistry"]
-
-  depends_on = [module.vnet]
 }
 
-# Private Endpoints Subnet
 module "subnet_private_endpoints" {
   source = "../../modules/networking/subnet"
 
-  name                 = "snet-${local.naming_prefix}-privateendpoints"
-  resource_group_name  = module.networking_rg.name
-  virtual_network_name = module.vnet.name
-  address_prefixes     = [var.subnet_private_endpoints_cidr]
-  service_endpoints    = []
-
+  name                                      = "snet-${local.naming_prefix}-privateendpoints"
+  resource_group_name                       = module.networking_rg.name
+  virtual_network_name                      = module.vnet.name
+  address_prefixes                          = [var.subnet_private_endpoints_cidr]
+  service_endpoints                         = []
   private_endpoint_network_policies_enabled = false
-
-  depends_on = [module.vnet]
 }
 
-# Database Subnet with Delegation
 module "subnet_database" {
   source = "../../modules/networking/subnet"
 
@@ -157,18 +133,11 @@ module "subnet_database" {
   address_prefixes     = [var.subnet_database_cidr]
   service_endpoints    = ["Microsoft.Sql", "Microsoft.Storage"]
 
-  delegation = {
-    name         = "database-delegation"
-    service_name = "Microsoft.DBforPostgreSQL/flexibleServers"
-    actions = [
-      "Microsoft.Network/virtualNetworks/subnets/join/action",
-    ]
-  }
-
-  depends_on = [module.vnet]
+  delegation_name    = "delegation"
+  service_delegation = "Microsoft.DBforPostgreSQL/flexibleServers"
+  delegation_actions = ["Microsoft.Network/virtualNetworks/subnets/join/action"]
 }
 
-# App Service Subnet with Delegation
 module "subnet_app_service" {
   source = "../../modules/networking/subnet"
 
@@ -178,22 +147,15 @@ module "subnet_app_service" {
   address_prefixes     = [var.subnet_app_service_cidr]
   service_endpoints    = []
 
-  delegation = {
-    name         = "appservice-delegation"
-    service_name = "Microsoft.Web/serverFarms"
-    actions = [
-      "Microsoft.Network/virtualNetworks/subnets/action",
-    ]
-  }
-
-  depends_on = [module.vnet]
+  delegation_name    = "delegation"
+  service_delegation = "Microsoft.Web/serverFarms"
+  delegation_actions = ["Microsoft.Network/virtualNetworks/subnets/action"]
 }
 
 #=============================================================================
-# NETWORK SECURITY GROUP MODULES
+# Network Security Group Modules
 #=============================================================================
 
-# Management NSG
 module "nsg_management" {
   source = "../../modules/networking/nsg"
 
@@ -237,13 +199,9 @@ module "nsg_management" {
     }
   ]
 
-  subnet_id = module.subnet_management.id
-  tags      = local.common_tags
-
-  depends_on = [module.subnet_management]
+  tags = local.common_tags
 }
 
-# AKS NSG
 module "nsg_aks" {
   source = "../../modules/networking/nsg"
 
@@ -266,11 +224,8 @@ module "nsg_aks" {
   ]
 
   tags = local.common_tags
-
-  depends_on = [module.subnet_aks_system, module.subnet_aks_user]
 }
 
-# Database NSG
 module "nsg_database" {
   source = "../../modules/networking/nsg"
 
@@ -280,37 +235,37 @@ module "nsg_database" {
 
   security_rules = [
     {
-      name                        = "AllowPostgreSQL"
-      priority                    = 100
-      direction                   = "Inbound"
-      access                      = "Allow"
-      protocol                    = "Tcp"
-      source_port_range           = "*"
-      destination_port_range      = "5432"
-      source_address_prefixes     = var.vnet_address_space
-      destination_address_prefix  = "*"
+      name                       = "AllowPostgreSQLFromVNet"
+      priority                   = 100
+      direction                  = "Inbound"
+      access                     = "Allow"
+      protocol                   = "Tcp"
+      source_port_range          = "*"
+      destination_port_range     = "5432"
+      source_address_prefixes    = var.vnet_address_space
+      destination_address_prefix = "*"
     },
     {
-      name                        = "AllowMySQL"
-      priority                    = 110
-      direction                   = "Inbound"
-      access                      = "Allow"
-      protocol                    = "Tcp"
-      source_port_range           = "*"
-      destination_port_range      = "3306"
-      source_address_prefixes     = var.vnet_address_space
-      destination_address_prefix  = "*"
+      name                       = "AllowMySQLFromVNet"
+      priority                   = 110
+      direction                  = "Inbound"
+      access                     = "Allow"
+      protocol                   = "Tcp"
+      source_port_range          = "*"
+      destination_port_range     = "3306"
+      source_address_prefixes    = var.vnet_address_space
+      destination_address_prefix = "*"
     },
     {
-      name                        = "AllowSQLServer"
-      priority                    = 120
-      direction                   = "Inbound"
-      access                      = "Allow"
-      protocol                    = "Tcp"
-      source_port_range           = "*"
-      destination_port_range      = "1433"
-      source_address_prefixes     = var.vnet_address_space
-      destination_address_prefix  = "*"
+      name                       = "AllowSQLServerFromVNet"
+      priority                   = 120
+      direction                  = "Inbound"
+      access                     = "Allow"
+      protocol                   = "Tcp"
+      source_port_range          = "*"
+      destination_port_range     = "1433"
+      source_address_prefixes    = var.vnet_address_space
+      destination_address_prefix = "*"
     },
     {
       name                       = "DenyAllInbound"
@@ -325,32 +280,71 @@ module "nsg_database" {
     }
   ]
 
-  subnet_id = module.subnet_database.id
-  tags      = local.common_tags
-
-  depends_on = [module.subnet_database]
+  tags = local.common_tags
 }
 
 #=============================================================================
-# ROUTE TABLE MODULE
+# NSG Association Modules
 #=============================================================================
 
-module "route_table_main" {
+module "nsg_association_management" {
+  source = "../../modules/networking/nsg-association"
+
+  subnet_id                 = module.subnet_management.id
+  network_security_group_id = module.nsg_management.id
+}
+
+module "nsg_association_aks_system" {
+  source = "../../modules/networking/nsg-association"
+
+  subnet_id                 = module.subnet_aks_system.id
+  network_security_group_id = module.nsg_aks.id
+}
+
+module "nsg_association_aks_user" {
+  source = "../../modules/networking/nsg-association"
+
+  subnet_id                 = module.subnet_aks_user.id
+  network_security_group_id = module.nsg_aks.id
+}
+
+module "nsg_association_database" {
+  source = "../../modules/networking/nsg-association"
+
+  subnet_id                 = module.subnet_database.id
+  network_security_group_id = module.nsg_database.id
+}
+
+#=============================================================================
+# Route Table Module
+#=============================================================================
+
+module "route_table" {
   source = "../../modules/networking/route-table"
 
-  name                          = "rt-${local.naming_prefix}-main"
-  location                      = var.location
-  resource_group_name           = module.networking_rg.name
-  disable_bgp_route_propagation = local.current_env_config.route_table_disable_bgp
+  name                = "rt-${local.naming_prefix}-main"
+  location            = var.location
+  resource_group_name = module.networking_rg.name
 
-  routes = var.custom_routes
-
-  subnet_ids = [
-    module.subnet_aks_system.id,
-    module.subnet_aks_user.id
-  ]
+  routes = []  # Add custom routes as needed
 
   tags = local.common_tags
+}
 
-  depends_on = [module.subnet_aks_system, module.subnet_aks_user]
+#=============================================================================
+# Route Table Association Modules
+#=============================================================================
+
+module "rt_association_aks_system" {
+  source = "../../modules/networking/route-table-association"
+
+  subnet_id      = module.subnet_aks_system.id
+  route_table_id = module.route_table.id
+}
+
+module "rt_association_aks_user" {
+  source = "../../modules/networking/route-table-association"
+
+  subnet_id      = module.subnet_aks_user.id
+  route_table_id = module.route_table.id
 }

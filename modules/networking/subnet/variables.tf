@@ -25,23 +25,31 @@ variable "service_endpoints" {
 }
 
 variable "private_endpoint_network_policies_enabled" {
-  description = "Enable or disable network policies for private endpoints"
+  description = "Enable network policies for private endpoints"
   type        = bool
   default     = true
 }
 
 variable "private_link_service_network_policies_enabled" {
-  description = "Enable or disable network policies for private link service"
+  description = "Enable network policies for private link service"
   type        = bool
   default     = true
 }
 
-variable "delegation" {
-  description = "Subnet delegation configuration"
-  type = object({
-    name         = string
-    service_name = string
-    actions      = list(string)
-  })
-  default = null
+variable "delegation_name" {
+  description = "Name of the delegation"
+  type        = string
+  default     = null
+}
+
+variable "service_delegation" {
+  description = "Service to delegate to"
+  type        = string
+  default     = null
+}
+
+variable "delegation_actions" {
+  description = "Actions for the delegation"
+  type        = list(string)
+  default     = []
 }

@@ -1,7 +1,7 @@
 /**
  * Route Table Module
  * 
- * Creates route table with custom routes and subnet associations
+ * Creates a route table with custom routes
  */
 
 terraform {
@@ -24,7 +24,7 @@ resource "azurerm_route_table" "this" {
   tags = var.tags
 }
 
-resource "azurerm_route" "routes" {
+resource "azurerm_route" "this" {
   for_each = { for route in var.routes : route.name => route }
 
   name                   = each.value.name
@@ -32,13 +32,5 @@ resource "azurerm_route" "routes" {
   route_table_name       = azurerm_route_table.this.name
   address_prefix         = each.value.address_prefix
   next_hop_type          = each.value.next_hop_type
-  next_hop_in_ip_address = try(each.value.next_hop_in_ip_address, null)
-}
-
-# Route Table to Subnet Association
-resource "azurerm_subnet_route_table_association" "this" {
-  for_each = toset(var.subnet_ids)
-
-  subnet_id      = each.value
-  route_table_id = azurerm_route_table.this.id
+  next_hop_in_ip_address = lookup(each.value, "next_hop_in_ip_address", null)
 }
