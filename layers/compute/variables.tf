@@ -227,3 +227,190 @@ variable "function_app_runtime_version" {
   type        = string
   default     = "18"
 }
+#=============================================================================
+# App Service Variables
+#=============================================================================
+
+variable "app_service_os_type" {
+  description = "OS type for App Service (Linux or Windows)"
+  type        = string
+  default     = "Linux"
+
+  validation {
+    condition     = contains(["Linux", "Windows"], var.app_service_os_type)
+    error_message = "OS type must be either Linux or Windows."
+  }
+}
+
+variable "app_service_health_check_path" {
+  description = "Health check path for App Service"
+  type        = string
+  default     = "/"
+}
+
+variable "app_service_application_stack" {
+  description = "Application stack configuration for App Service"
+  type        = map(string)
+  default     = null
+}
+
+variable "app_service_ip_restrictions" {
+  description = "IP restriction rules for App Service"
+  type = list(object({
+    name                      = string
+    priority                  = number
+    action                    = string
+    ip_address                = optional(string)
+    virtual_network_subnet_id = optional(string)
+  }))
+  default = []
+}
+
+variable "app_service_app_settings" {
+  description = "Application settings for App Service"
+  type        = map(string)
+  default     = {}
+}
+
+variable "app_service_connection_strings" {
+  description = "Connection strings for App Service"
+  type = list(object({
+    name  = string
+    type  = string
+    value = string
+  }))
+  default   = []
+  sensitive = true
+}
+
+#=============================================================================
+# App Service Variables
+#=============================================================================
+
+variable "enable_app_service" {
+  description = "Enable App Service deployment"
+  type        = bool
+  default     = false
+}
+
+variable "app_service_os_type" {
+  description = "OS type for App Service (Linux or Windows)"
+  type        = string
+  default     = "Linux"
+
+  validation {
+    condition     = contains(["Linux", "Windows"], var.app_service_os_type)
+    error_message = "App Service OS type must be Linux or Windows."
+  }
+}
+
+variable "enable_app_service_vnet_integration" {
+  description = "Enable VNet integration for App Service"
+  type        = bool
+  default     = false
+}
+
+variable "app_service_websockets_enabled" {
+  description = "Enable WebSockets for App Service"
+  type        = bool
+  default     = false
+}
+
+variable "app_service_health_check_path" {
+  description = "Health check path for App Service"
+  type        = string
+  default     = null
+}
+
+# Application Stack Configuration
+variable "app_service_docker_image" {
+  description = "Docker image name for Linux App Service"
+  type        = string
+  default     = null
+}
+
+variable "app_service_docker_registry_url" {
+  description = "Docker registry URL"
+  type        = string
+  default     = "https://index.docker.io"
+}
+
+variable "app_service_dotnet_version" {
+  description = ".NET version for App Service"
+  type        = string
+  default     = null
+}
+
+variable "app_service_java_version" {
+  description = "Java version for App Service"
+  type        = string
+  default     = null
+}
+
+variable "app_service_node_version" {
+  description = "Node.js version for App Service"
+  type        = string
+  default     = null
+}
+
+variable "app_service_php_version" {
+  description = "PHP version for App Service"
+  type        = string
+  default     = null
+}
+
+variable "app_service_python_version" {
+  description = "Python version for App Service"
+  type        = string
+  default     = null
+}
+
+variable "app_service_windows_stack" {
+  description = "Windows stack for App Service (dotnet, node, php, python)"
+  type        = string
+  default     = null
+}
+
+# Security and Networking
+variable "app_service_ip_restrictions" {
+  description = "IP restriction rules for App Service"
+  type = list(object({
+    name                      = string
+    priority                  = number
+    action                    = string
+    ip_address                = optional(string)
+    virtual_network_subnet_id = optional(string)
+    service_tag               = optional(string)
+  }))
+  default = []
+}
+
+variable "app_service_cors_allowed_origins" {
+  description = "Allowed origins for CORS"
+  type        = list(string)
+  default     = null
+}
+
+variable "app_service_cors_support_credentials" {
+  description = "Support credentials for CORS"
+  type        = bool
+  default     = false
+}
+
+# App Settings and Connection Strings
+variable "app_service_app_settings" {
+  description = "App settings for App Service"
+  type        = map(string)
+  default     = {}
+}
+
+variable "app_service_connection_strings" {
+  description = "Connection strings for App Service"
+  type = list(object({
+    name  = string
+    type  = string
+    value = string
+  }))
+  default = []
+  sensitive = true
+}

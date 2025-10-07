@@ -1,15 +1,8 @@
 /**
  * Compute Layer - Root Module
  * 
- * This is the root module for the compute layer.
- * It ONLY calls modules from /modules directory - no direct resource creation.
- * 
- * This layer manages:
- * - Azure Kubernetes Service (AKS)
- * - Virtual Machine Scale Sets (VMSS)
- * - Azure App Service
- * - Azure Functions
- * - Container Instances
+ * This layer manages compute resources by calling modules from /modules.
+ * NO resources are created directly here - only module calls.
  */
 
 terraform {
@@ -54,9 +47,8 @@ data "terraform_remote_state" "networking" {
   }
 }
 
-# Remote state data - security layer (optional, for Key Vault and identities)
+# Remote state data - security layer
 data "terraform_remote_state" "security" {
-  count   = var.enable_security_integration ? 1 : 0
   backend = "azurerm"
 
   config = {
@@ -74,10 +66,9 @@ data "terraform_remote_state" "security" {
 module "compute_rg" {
   source = "../../modules/resource-group"
 
-  name     = "rg-${local.naming_prefix}-compute-${var.location}"
-  location = var.location
-  tags     = local.common_tags
-
+  name       = "rg-${local.naming_prefix}-compute-${var.location}"
+  location   = var.location
+  tags       = local.common_tags
   lock_level = var.environment == "prod" ? "CanNotDelete" : null
 }
 
@@ -126,8 +117,8 @@ module "aks" {
   admin_group_object_ids = var.aks_admin_group_object_ids
   azure_rbac_enabled     = true
 
-  # Monitoring - integrate with security layer if available
-  log_analytics_workspace_id = var.enable_security_integration && length(data.terraform_remote_state.security) > 0 ? try(data.terraform_remote_state.security[0].outputs.log_analytics_workspace_id, null) : null
+  # Monitoring
+  log_analytics_workspace_id = try(data.terraform_remote_state.security.outputs.log_analytics_workspace_id, null)
 
   # Security features
   private_cluster_enabled   = local.aks_config.private_cluster_enabled
@@ -142,6 +133,152 @@ module "aks" {
 
   identity_type = "SystemAssigned"
   identity_ids  = []
+
+  tags = local.common_tags
+
+  depends_on = [module.compute_rg]
+}
+
+#=============================================================================
+# App Service Module
+#=============================================================================
+
+module "app_service" {
+  count  = var.enable_app_service ? 1 : 0
+  source = "../../modules/compute/app-service"
+
+  app_service_plan_name = "asp-${local.naming_prefix}"
+  app_service_name      = "app-${local.naming_prefix}"
+  location              = var.location
+  resource_group_name   = module.compute_rg.name
+
+  # App Service Plan configuration
+  os_type                = var.app_service_os_type
+  sku_name               = local.app_service_config.sku_name
+  zone_balancing_enabled = local.app_service_config.zone_balancing_enabled
+  worker_count           = local.app_service_config.worker_count
+
+  # App Service configuration
+  always_on                     = local.app_service_config.always_on
+  public_network_access_enabled = local.app_service_config.public_network_access_enabled
+  vnet_integration_subnet_id    = local.feature_flags.enable_vnet_integration ? data.terraform_remote_state.networking.outputs.subnet_app_service_id : null
+
+  # Health check
+  health_check_path          = var.app_service_health_check_path
+  health_check_eviction_time = 2
+
+  # Application stack
+  application_stack = var.app_service_application_stack
+
+  # IP restrictions
+  ip_restrictions = var.app_service_ip_restrictions
+
+  # Application settings
+  app_settings = var.app_service_app_settings
+
+  # Connection strings
+  connection_strings = var.app_service_connection_strings
+
+  # Managed identity
+  identity_type = local.feature_flags.use_managed_identity ? "SystemAssigned" : "SystemAssigned"
+  identity_ids  = []
+
+  # Logging
+  http_logs_retention_days = local.app_service_config.http_logs_retention_days
+
+  # Application Insights
+  application_insights_key = null  # Add when monitoring layer is deployed
+
+  # Deployment slot
+  enable_deployment_slot = local.app_service_config.enable_deployment_slot
+
+  # Private endpoint
+  private_endpoint_subnet_id = local.feature_flags.enable_private_endpoints ? data.terraform_remote_state.networking.outputs.subnet_private_endpoints_id : null
+  private_dns_zone_ids       = null  # Add private DNS zone IDs if needed
+
+  # Diagnostics
+  log_analytics_workspace_id = try(data.terraform_remote_state.security.outputs.log_analytics_workspace_id, null)
+
+  tags = local.common_tags
+
+  depends_on = [module.compute_rg]
+}
+#=============================================================================
+# App Service Module
+#=============================================================================
+
+module "app_service" {
+  count  = var.enable_app_service ? 1 : 0
+  source = "../../modules/compute/app-service"
+
+  service_plan_name   = "asp-${local.naming_prefix}"
+  app_service_name    = "app-${local.naming_prefix}"
+  location            = var.location
+  resource_group_name = module.compute_rg.name
+
+  # Service Plan Configuration
+  os_type                      = var.app_service_os_type
+  sku_name                     = local.app_service_config.sku_name
+  worker_count                 = local.app_service_config.worker_count
+  zone_balancing_enabled       = local.app_service_config.zone_balancing_enabled
+  maximum_elastic_worker_count = local.app_service_config.maximum_elastic_worker_count
+
+  # App Service Configuration
+  https_only                    = true
+  client_affinity_enabled       = false
+  public_network_access_enabled = local.app_service_config.public_network_access_enabled
+  vnet_integration_subnet_id    = var.enable_app_service_vnet_integration ? data.terraform_remote_state.networking.outputs.subnet_app_service_id : null
+
+  # Identity
+  identity_type = "SystemAssigned"
+  identity_ids  = []
+
+  # Site Configuration
+  always_on                         = local.app_service_config.always_on
+  ftps_state                        = "FtpsOnly"
+  http2_enabled                     = true
+  minimum_tls_version               = "1.2"
+  vnet_route_all_enabled            = var.enable_app_service_vnet_integration
+  websockets_enabled                = var.app_service_websockets_enabled
+  health_check_path                 = var.app_service_health_check_path
+  health_check_eviction_time_in_min = 10
+
+  # Application Stack
+  docker_image_name   = var.app_service_docker_image
+  docker_registry_url = var.app_service_docker_registry_url
+  dotnet_version      = var.app_service_dotnet_version
+  java_version        = var.app_service_java_version
+  node_version        = var.app_service_node_version
+  php_version         = var.app_service_php_version
+  python_version      = var.app_service_python_version
+  windows_current_stack = var.app_service_windows_stack
+
+  # Security
+  ip_restrictions = var.app_service_ip_restrictions
+
+  # CORS
+  cors_allowed_origins     = var.app_service_cors_allowed_origins
+  cors_support_credentials = var.app_service_cors_support_credentials
+
+  # App Settings
+  app_settings       = var.app_service_app_settings
+  connection_strings = var.app_service_connection_strings
+
+  # Logging
+  detailed_error_messages  = true
+  failed_request_tracing   = true
+  app_log_level            = local.app_service_config.app_log_level
+  http_logs_retention_days = local.app_service_config.http_logs_retention_days
+  http_logs_retention_mb   = 35
+
+  # Application Insights
+  application_insights_key = null  # Set when monitoring layer is deployed
+
+  # Deployment Slots
+  enable_staging_slot = local.app_service_config.enable_staging_slot
+
+  # Monitoring
+  log_analytics_workspace_id = try(data.terraform_remote_state.security.outputs.log_analytics_workspace_id, null)
 
   tags = local.common_tags
 

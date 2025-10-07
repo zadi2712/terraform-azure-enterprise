@@ -142,3 +142,42 @@ locals {
     }
   }[var.environment]
 }
+  # Environment-specific App Service configuration
+  app_service_config = {
+    dev = {
+      sku_name                      = "B1"
+      zone_balancing_enabled        = false
+      worker_count                  = 1
+      always_on                     = false
+      public_network_access_enabled = true
+      http_logs_retention_days      = 7
+      enable_deployment_slot        = false
+    }
+    qa = {
+      sku_name                      = "S1"
+      zone_balancing_enabled        = false
+      worker_count                  = 2
+      always_on                     = true
+      public_network_access_enabled = true
+      http_logs_retention_days      = 14
+      enable_deployment_slot        = true
+    }
+    uat = {
+      sku_name                      = "S2"
+      zone_balancing_enabled        = true
+      worker_count                  = 2
+      always_on                     = true
+      public_network_access_enabled = false
+      http_logs_retention_days      = 30
+      enable_deployment_slot        = true
+    }
+    prod = {
+      sku_name                      = "P1v3"
+      zone_balancing_enabled        = true
+      worker_count                  = 3
+      always_on                     = true
+      public_network_access_enabled = false
+      http_logs_retention_days      = 90
+      enable_deployment_slot        = true
+    }
+  }[var.environment]
