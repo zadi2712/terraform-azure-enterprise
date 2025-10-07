@@ -74,3 +74,33 @@ vmss_admin_username  = "azureuser"
 enable_function_app         = false
 function_app_runtime        = "node"
 function_app_runtime_version = "18"
+
+#=============================================================================
+# Web App Configuration
+#=============================================================================
+
+enable_web_app                       = true
+web_app_os_type                      = "Linux"
+web_app_sku_name                     = "S1"
+web_app_health_check_path            = "/health"
+web_app_health_check_eviction_time   = 10
+
+# Application Stack - Node.js example
+web_app_application_stack = {
+  node_version = "20-lts"
+}
+
+# App Settings
+web_app_app_settings = {
+  "NODE_ENV"                  = "qa"
+  "WEBSITE_NODE_DEFAULT_VERSION" = "~20"
+}
+
+# Logging
+web_app_detailed_error_messages   = false
+web_app_failed_request_tracing    = false
+web_app_enable_application_logs   = true
+web_app_application_logs_level    = "Information"
+web_app_enable_http_logs          = true
+web_app_http_logs_retention_days  = 14
+web_app_http_logs_retention_mb    = 50

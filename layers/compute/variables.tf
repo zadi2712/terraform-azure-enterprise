@@ -414,3 +414,119 @@ variable "app_service_connection_strings" {
   default = []
   sensitive = true
 }
+
+#=============================================================================
+# Web App Configuration
+#=============================================================================
+
+variable "enable_web_app" {
+  description = "Enable Web App deployment"
+  type        = bool
+  default     = false
+}
+
+variable "web_app_os_type" {
+  description = "Operating System type for Web App (Linux or Windows)"
+  type        = string
+  default     = "Linux"
+
+  validation {
+    condition     = contains(["Linux", "Windows"], var.web_app_os_type)
+    error_message = "OS type must be either Linux or Windows."
+  }
+}
+
+variable "web_app_sku_name" {
+  description = "SKU name for the App Service Plan"
+  type        = string
+  default     = "P1v3"
+}
+
+variable "web_app_health_check_path" {
+  description = "Health check path for Web App"
+  type        = string
+  default     = "/health"
+}
+
+variable "web_app_health_check_eviction_time" {
+  description = "Health check eviction time in minutes"
+  type        = number
+  default     = 10
+}
+
+variable "web_app_identity_type" {
+  description = "Type of managed identity for Web App"
+  type        = string
+  default     = "SystemAssigned"
+}
+
+variable "web_app_identity_ids" {
+  description = "List of User Assigned Identity IDs for Web App"
+  type        = list(string)
+  default     = []
+}
+
+variable "web_app_application_stack" {
+  description = "Application stack configuration for Web App"
+  type        = any
+  default     = null
+}
+
+variable "web_app_app_settings" {
+  description = "Application settings for Web App"
+  type        = map(string)
+  default     = {}
+}
+
+variable "web_app_connection_strings" {
+  description = "Connection strings for Web App"
+  type = list(object({
+    name  = string
+    type  = string
+    value = string
+  }))
+  default   = []
+  sensitive = true
+}
+
+variable "web_app_detailed_error_messages" {
+  description = "Enable detailed error messages for Web App"
+  type        = bool
+  default     = false
+}
+
+variable "web_app_failed_request_tracing" {
+  description = "Enable failed request tracing for Web App"
+  type        = bool
+  default     = false
+}
+
+variable "web_app_enable_application_logs" {
+  description = "Enable application logs for Web App"
+  type        = bool
+  default     = true
+}
+
+variable "web_app_application_logs_level" {
+  description = "Application logs level for Web App"
+  type        = string
+  default     = "Information"
+}
+
+variable "web_app_enable_http_logs" {
+  description = "Enable HTTP logs for Web App"
+  type        = bool
+  default     = true
+}
+
+variable "web_app_http_logs_retention_days" {
+  description = "HTTP logs retention in days for Web App"
+  type        = number
+  default     = 7
+}
+
+variable "web_app_http_logs_retention_mb" {
+  description = "HTTP logs retention in MB for Web App"
+  type        = number
+  default     = 35
+}

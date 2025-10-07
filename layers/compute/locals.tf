@@ -181,3 +181,47 @@ locals {
       enable_deployment_slot        = true
     }
   }[var.environment]
+
+  # Environment-specific Web App configuration
+  web_app_config = {
+    dev = {
+      zone_redundant      = false
+      web_app_private_only = false
+      web_app_vnet_route_all = false
+    }
+    qa = {
+      zone_redundant      = false
+      web_app_private_only = false
+      web_app_vnet_route_all = true
+    }
+    uat = {
+      zone_redundant      = true
+      web_app_private_only = true
+      web_app_vnet_route_all = true
+    }
+    prod = {
+      zone_redundant      = true
+      web_app_private_only = true
+      web_app_vnet_route_all = true
+    }
+  }[var.environment]
+
+  # Combined compute configuration for easy reference
+  compute_config = merge(
+    local.aks_config,
+    local.app_service_config,
+    local.vmss_config,
+    local.web_app_config,
+    local.feature_flags
+  )
+
+  # Location short codes
+  location_codes = {
+    eastus  = "eus"
+    eastus2 = "eus2"
+    westus  = "wus"
+    westus2 = "wus2"
+  }
+
+  location_short = lookup(local.location_codes, var.location, substr(var.location, 0, 3))
+}

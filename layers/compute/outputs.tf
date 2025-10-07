@@ -71,3 +71,37 @@ output "compute_config" {
   }
   sensitive = false
 }
+
+#=============================================================================
+# Web App Outputs
+#=============================================================================
+
+output "web_app_id" {
+  description = "ID of the Web App"
+  value       = var.enable_web_app ? module.web_app[0].id : null
+}
+
+output "web_app_name" {
+  description = "Name of the Web App"
+  value       = var.enable_web_app ? module.web_app[0].name : null
+}
+
+output "web_app_default_hostname" {
+  description = "Default hostname of the Web App"
+  value       = var.enable_web_app ? module.web_app[0].default_hostname : null
+}
+
+output "web_app_outbound_ip_addresses" {
+  description = "Outbound IP addresses of the Web App"
+  value       = var.enable_web_app ? module.web_app[0].outbound_ip_addresses : null
+}
+
+output "web_app_identity_principal_id" {
+  description = "Principal ID of the Web App managed identity"
+  value       = var.enable_web_app ? module.web_app[0].identity_principal_id : null
+}
+
+output "web_app_service_plan_id" {
+  description = "ID of the App Service Plan"
+  value       = var.enable_web_app ? module.web_app[0].service_plan_id : null
+}

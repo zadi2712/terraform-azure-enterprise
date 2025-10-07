@@ -117,3 +117,34 @@ vmss_admin_username  = "azureuser"
 enable_function_app         = true
 function_app_runtime        = "node"
 function_app_runtime_version = "20"  # Latest LTS version
+
+#=============================================================================
+# Web App Configuration
+#=============================================================================
+
+enable_web_app                       = true
+web_app_os_type                      = "Linux"
+web_app_sku_name                     = "P1v3"  # Production premium SKU
+web_app_health_check_path            = "/health"
+web_app_health_check_eviction_time   = 10
+
+# Application Stack - Node.js example (LTS version for production)
+web_app_application_stack = {
+  node_version = "20-lts"
+}
+
+# App Settings - Production configuration
+web_app_app_settings = {
+  "NODE_ENV"                     = "production"
+  "WEBSITE_NODE_DEFAULT_VERSION" = "~20"
+  "WEBSITE_HTTPLOGGING_RETENTION_DAYS" = "90"
+}
+
+# Logging - Production logging configuration
+web_app_detailed_error_messages   = false  # Disabled for security
+web_app_failed_request_tracing    = false  # Disabled for security
+web_app_enable_application_logs   = true
+web_app_application_logs_level    = "Warning"  # Only warnings and errors
+web_app_enable_http_logs          = true
+web_app_http_logs_retention_days  = 90  # Longer retention for production
+web_app_http_logs_retention_mb    = 100  # Larger size for production

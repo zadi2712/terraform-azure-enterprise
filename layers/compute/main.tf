@@ -284,3 +284,76 @@ module "app_service" {
 
   depends_on = [module.compute_rg]
 }
+
+#=============================================================================
+# Web App Module
+#=============================================================================
+
+module "web_app" {
+  count  = var.enable_web_app ? 1 : 0
+  source = "../../modules/compute/web-app"
+
+  name                = "app-${local.naming_prefix}-${local.location_short}"
+  location            = var.location
+  resource_group_name = module.compute_rg.name
+
+  service_plan_name = "plan-${local.naming_prefix}-${local.location_short}"
+  os_type           = var.web_app_os_type
+  sku_name          = var.web_app_sku_name
+  zone_redundant    = local.compute_config.web_app_zone_redundant
+
+  # Security
+  https_only                    = true
+  minimum_tls_version           = "1.2"
+  ftps_state                    = "Disabled"
+  public_network_access_enabled = !local.compute_config.web_app_private_only
+
+  # Networking
+  vnet_integration_subnet_id = data.terraform_remote_state.networking.outputs.subnet_app_service_id
+  vnet_route_all_enabled     = local.compute_config.web_app_vnet_route_all
+
+  # Health Check
+  health_check_path          = var.web_app_health_check_path
+  health_check_eviction_time = var.web_app_health_check_eviction_time
+
+  # Identity
+  identity_type = var.web_app_identity_type
+  identity_ids  = var.web_app_identity_ids
+
+  # Application Stack
+  application_stack = var.web_app_application_stack
+
+  # App Settings
+  app_settings = merge(
+    var.web_app_app_settings,
+    {
+      "WEBSITE_RUN_FROM_PACKAGE"       = "1"
+      "WEBSITES_ENABLE_APP_SERVICE_STORAGE" = "false"
+      "ENVIRONMENT"                    = var.environment
+    }
+  )
+
+  # Connection Strings
+  connection_strings = var.web_app_connection_strings
+
+  # Logging
+  detailed_error_messages   = var.web_app_detailed_error_messages
+  failed_request_tracing    = var.web_app_failed_request_tracing
+  enable_application_logs   = var.web_app_enable_application_logs
+  application_logs_level    = var.web_app_application_logs_level
+  enable_http_logs          = var.web_app_enable_http_logs
+  http_logs_retention_days  = var.web_app_http_logs_retention_days
+  http_logs_retention_mb    = var.web_app_http_logs_retention_mb
+
+  # Private Endpoint
+  enable_private_endpoint    = local.compute_config.web_app_private_only
+  private_endpoint_subnet_id = local.compute_config.web_app_private_only ? data.terraform_remote_state.networking.outputs.subnet_private_endpoints_id : null
+  private_dns_zone_ids       = []  # Add private DNS zone IDs when DNS layer is deployed
+
+  # Monitoring
+  log_analytics_workspace_id = null  # Add when monitoring layer is deployed
+
+  tags = local.common_tags
+
+  depends_on = [module.compute_rg]
+}
